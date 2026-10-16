@@ -31,7 +31,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .pin{display:grid;grid-template-columns:repeat(3,72px);gap:10px;justify-content:center;margin:12px 0}
 .pin button{height:64px;font-size:24px;font-weight:800;border-radius:16px;border:2px solid var(--line);background:var(--card)}
 .dots{text-align:center;font-size:30px;letter-spacing:10px;min-height:42px}
-input[type=text],select{font:inherit;padding:9px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+input[type=text],input[type=date],select{font:inherit;padding:9px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
 .row{display:flex;gap:8px;align-items:center}.sp{justify-content:space-between;margin:6px 0}
 .mute{color:var(--mute)}.warn{color:var(--bad);font-weight:800}.who{font-weight:800}
 .q{min-width:28px;text-align:center;font-weight:800}
@@ -79,7 +79,7 @@ const del=(t,m)=>ok(sb.from(t).delete().match(m));
 async function load(){try{
  const d=new Date();d.setDate(d.getDate()-90);const since=key(d.getFullYear(),d.getMonth(),d.getDate()),q=t=>sb.from(t).select('*');
  const R=await Promise.all([q('artikelen').order('id'),q('beleg').order('id'),q('dozen').order('id'),q('symbolen').order('id'),q('dag_symbolen').gte('dag',since),q('dagen').gte('dag',since),q('weekstandaard'),q('keuzes').gte('dag',since).order('id'),q('taken').gte('dag',since).order('id'),q('taken_klaar'),q('boodschappen').order('id')]);
- R.forEach(r=>{if(r.error)throw r.error});const[a,b,c,s,ds,dg,w,k,t,kl,sh]=R.map(r=>r.data);
+ R.forEach(r=>{if(r.error)throw r.error});const wr=await sb.from('weerplaatsen').select('*').gte('tot',since);WP=wr.error?[]:wr.data;const[a,b,c,s,ds,dg,w,k,t,kl,sh]=R.map(r=>r.data);
  DB={art:a,bel:b,doz:c,sym:s,ds,dagen:Object.fromEntries(dg.map(x=>[x.dag,x])),week:Object.fromEntries(w.map(x=>[x.weekdag,x])),keuzes:k,taken:t,klaar:kl,shop:sh};S.err=null}
  catch(e){console.error(e);S.err='Geen verbinding met de database.'}
  S.loading=0;draw()}
@@ -195,18 +195,18 @@ function day(){if(S.edit&&(adm()||DB.dagen[S.day]))return wiz(S.day);
  else h+=on.length?on.map(i=>{const s=DB.sym.find(z=>z.id==i);return s?`<span class="chip">${si(s)} ${esc(s.naam)}</span>`:''}).join(''):'<span class="mute">Niets bijzonders.</span>';
  h+='</div>';
  if(adm()){
-  h+=(S.cf?`<div class="card warn">Kinderen hebben hiervoor al gekozen. Hun keuzes voor dit onderdeel vervallen als je dit wijzigt.<div class="row" style="margin-top:8px">${B('Ja, wijzig','cfOk()')}${B('Annuleer','S.cf=null;draw()','ghost')}</div></div>`:'')+'<div class="card"><h2>Schoollijstje instellen</h2>';
+  h+=wxCard(k)+(S.cf?`<div class="card warn">Kinderen hebben hiervoor al gekozen. Hun keuzes voor dit onderdeel vervallen als je dit wijzigt.<div class="row" style="margin-top:8px">${B('Ja, wijzig','cfOk()')}${B('Annuleer','S.cf=null;draw()','ghost')}</div></div>`:'')+'<div class="card"><h2>Schoollijstje instellen</h2>';
   if(!gc)h+=B('Dag instellen','setDay()');
   else{h+=`<div class="row">${B('Boterhammen',"setT('b')",gc.type=='b'?'':'ghost')}${B('Sandwich',"setT('s')",gc.type=='s'?'':'ghost')}</div>`;
    [['hartig','Hartig beleg'],['zoet','Zoet beleg'],...SC.map(c=>[c,CATS[c]])].forEach(([f,l])=>h+=`<div class="row sp"><span>${l}</span>${stp(`chg('${f}',`,gc[f])}</div>`);
    h+=B('Standaard voor elke '+nlDate(k,{weekday:'long'}),'stdWeek()','ghost sm')}
   h+=`</div>${parentCard(k)}<div class="card"><h2>Gekozen door de kinderen</h2>${FAM.filter(c=>c.kid).map(c=>`<div style="margin:6px 0"><span class="who" style="color:${c.c}">${c.n}</span><br>${mine(k,c.id)}</div>`).join('')}</div>`}
- else{h+='<div class="card"><h2>Schoollijstje</h2>';
+ else{h+=wxCard(k)+'<div class="card"><h2>Schoollijstje</h2>';
   h+=gc?mine(k,S.who)+`<div style="margin-top:8px">${B(pk(k,S.who).length?'Aanpassen':'Maken','S.edit=1;S.step=0;draw()')}</div>`:'<span class="mute">Mammie en pappie hebben deze dag nog niet ingesteld.</span>';
   h+='</div>'}
  const TK=DB.taken.filter(t=>t.dag==k);
  h+=`<div class="card"><h2>Taken</h2>${TK.length?TK.map(t=>adm()?`<div style="margin:8px 0"><div class="row sp"><span>• ${esc(t.tekst)}</span><button class="chip sm" onclick="delT(${t.id})" aria-label="Verwijder">✕</button></div>${FAM.filter(c=>c.kid).map(c=>{const d=DB.klaar.some(x=>x.taak_id==t.id&&x.persoon==c.id);return `<span class="chip${d?' on':''}">${c.n}${d?' ✓':' ○'}</span>`}).join('')}</div>`:`<label class="row" style="margin:6px 0"><input type="checkbox" ${DB.klaar.some(x=>x.taak_id==t.id&&x.persoon==S.who)?'checked':''} onchange="doneT(${t.id})"> ${esc(t.tekst)}</label>`).join(''):'<span class="mute">Geen taken.</span>'}`;
- h+=adm()?`<div class="row" style="margin-top:8px"><input type="text" id="nt" placeholder="Nieuwe taak"><button class="btn" onclick="addTask()">+</button></div>`:'<div class="mute" style="margin-top:8px">☀️ Weerbericht volgt.</div>';
+ h+=adm()?`<div class="row" style="margin-top:8px"><input type="text" id="nt" placeholder="Nieuwe taak"><button class="btn" onclick="addTask()">+</button></div>`:'';
  return h+'</div>'+shopCard()}
 function editCard(){const e=S.ed,o=edObj(e);let h=`<div class="card" style="border-color:var(--acc)"><h2>Aanpassen</h2><input type="text" id="en" value="${esc(o.naam)}" style="margin-bottom:8px">`;
  if(e.kind=='sym')h+=`<input type="text" id="ee" value="${esc(o.emoji)}" style="margin-bottom:8px">`;
@@ -224,6 +224,30 @@ function inv(){let h=head('Voorraad')+(S.ed?editCard():'');
 function shop(){let h=head('Boodschappen')+`<div class="card"><h2>Op mijn lijstje zetten</h2><div class="row"><input type="text" id="ns" placeholder="Wat moet er gekocht worden?"><button class="btn" onclick="addShop()">+</button></div></div><div class="mute" style="margin-bottom:10px">Tik één keer: in het karretje. Tik nog eens na het afrekenen: weg van het lijstje.</div>`;
  FAM.forEach(f=>{const L=DB.shop.filter(x=>x.persoon==f.id);h+=`<div class="card"><div class="who" style="color:${f.c};margin-bottom:6px">${f.n}</div>${L.length?L.map(x=>`<button class="it${x.in_kar?' done':''}" onclick="tapShop(${x.id})"><span>${x.in_kar?'✅':'⬜'}</span>${esc(x.tekst)}</button>`).join(''):'<span class="mute">Niets op het lijstje.</span>'}</div>`});
  return h}
+/* ---------- weer ---------- */
+let WP=[];const WX={},HOME_PLACE={naam:'Ruisbroek',lat:51.09,lon:4.31};
+const todayK=()=>{const t=new Date();return key(t.getFullYear(),t.getMonth(),t.getDate())};
+const wmo=c=>c==0?['☀️','Onbewolkt']:c<=1?['🌤️','Overwegend zonnig']:c==2?['⛅','Half bewolkt']:c==3?['☁️','Bewolkt']:c<=48?['🌫️','Mist']:c<=57?['🌦️','Motregen']:c<=67?['🌧️','Regen']:c<=77?['🌨️','Sneeuw']:c<=82?['🌦️','Buien']:c<=86?['🌨️','Sneeuwbuien']:['⛈️','Onweer'];
+const wxPlace=k=>WP.find(p=>p.van<=k&&k<=p.tot)||HOME_PLACE;
+function wxGet(p){const id=p.lat+','+p.lon,w=WX[id];if(w&&Date.now()-w.t<1800000)return w;
+ WX[id]={t:Date.now(),s:'laden'};
+ fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=Europe%2FBrussels&forecast_days=16`).then(r=>r.json()).then(j=>{WX[id]={t:Date.now(),s:'ok',d:j.daily};draw()}).catch(()=>{WX[id]={t:Date.now(),s:'fout'};draw()});
+ return WX[id]}
+async function addWP(){const n=gv('wn'),v=document.getElementById('wv').value,t=document.getElementById('wt').value;
+ if(!n||!v||!t){toast('Vul de plaats en beide data in.');return}if(t<v){toast('De einddatum ligt voor de begindatum.');return}
+ try{const r=await fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(n)+'&count=1&language=nl'),j=await r.json(),g=j.results&&j.results[0];
+  if(!g){toast('Plaats niet gevonden.');return}await act(()=>ins('weerplaatsen',{van:v,tot:t,naam:g.name,lat:g.latitude,lon:g.longitude}))}catch(e){toast('Plaats zoeken lukte niet.')}}
+const delWP=id=>act(()=>del('weerplaatsen',{id}));
+function wxCard(k){const p=wxPlace(k),w=wxGet(p);let b;
+ if(w.s=='laden')b='<span class="mute">Weer laden…</span>';
+ else if(w.s=='fout')b='<span class="mute">Weerbericht niet beschikbaar.</span>';
+ else{const i=w.d.time.indexOf(k);
+  if(i<0)b='<span class="mute">Nog geen voorspelling voor deze dag.</span>';
+  else{const[e,t]=wmo(w.d.weather_code[i]),r=w.d.precipitation_probability_max[i];
+   b=`<div class="row" style="gap:14px"><span style="font-size:52px;line-height:1">${e}</span><div><div class="who">${t}</div><div>${Math.round(w.d.temperature_2m_min[i])}° tot ${Math.round(w.d.temperature_2m_max[i])}°</div><div class="mute">${r==null?'':r+'% kans op regen · '}wind tot ${Math.round(w.d.wind_speed_10m_max[i])} km/u</div></div></div>`}}
+ let a='';
+ if(adm())a=`<div style="margin-top:12px;border-top:2px solid var(--line);padding-top:10px"><div class="who">Weer van een andere plaats</div>${WP.filter(x=>x.tot>=todayK()).map(x=>`<div class="row sp"><span>${esc(x.naam)}: ${nlDate(x.van,{day:'numeric',month:'short'})} – ${nlDate(x.tot,{day:'numeric',month:'short'})}</span><button class="chip sm" onclick="delWP(${x.id})" aria-label="Verwijder">✕</button></div>`).join('')}<input type="text" id="wn" placeholder="Plaats (bv. De Panne)" style="margin:6px 0"><div class="row"><input type="date" id="wv" value="${k}" aria-label="Van"><input type="date" id="wt" value="${k}" aria-label="Tot"><button class="btn" onclick="addWP()">+</button></div></div>`;
+ return `<div class="card"><h2>Weer · ${esc(p.naam)}</h2>${b}${a}</div>`}
 /* ---------- tekenen + terugknop ---------- */
 let POP=0,LS='';
 addEventListener('popstate',e=>{let t=e.state||{scr:'home'};if(t.scr!='home'&&!S.who||t.scr=='pin')t={scr:'home'};S.scr=t.scr;S.day=t.day||S.day;S.edit=t.edit||0;S.step=t.step||0;S.pend=null;S.cf=null;S.ed=null;POP=1;draw();POP=0});
