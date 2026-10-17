@@ -137,6 +137,16 @@ function addInv(){const n=gv('in'),c=document.getElementById('ic').value,t=docum
  if(n)act(()=>ins('artikelen',{cat:c,naam:n,soort:c=='brood'?t:null,vraag:c=='fruit'&&q&&a.length?q:null,antwoorden:c=='fruit'&&q?a:[]}))}
 function addBel(){const n=gv('bn');if(n)act(()=>ins('beleg',{naam:n,soort:document.getElementById('bt').value}))}
 function addDoz(){const n=gv('dn');if(n)act(()=>ins('dozen',{naam:n}))}
+const pbtn=(kind,id,ans,has)=>`<label class="chip sm" style="cursor:pointer">${has?'🖼️':'📷'}<input type="file" accept="image/*" style="display:none" onchange="upl('${kind}',${id},'${ans}',this)"></label> `;
+const shrink=f=>new Promise((res,rej)=>{const im=new Image(),u=URL.createObjectURL(f);im.onload=()=>{const c=document.createElement('canvas'),m=Math.min(im.width,im.height);c.width=c.height=400;c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,400,400);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error('blob')),'image/jpeg',.8)};im.onerror=()=>rej(new Error('img'));im.src=u});
+async function upl(kind,id,ans,inp){const f=inp.files[0];if(!f)return;toast('Foto uploaden…');
+ try{const blob=await shrink(f),path=TBL[kind]+'-'+id+(ans!==''?'-'+ans:'')+'-'+Date.now()+'.jpg';
+  const up=await sb.storage.from('fotos').upload(path,blob,{contentType:'image/jpeg'});if(up.error)throw up.error;
+  const url=sb.storage.from('fotos').getPublicUrl(path).data.publicUrl;
+  if(ans!==''){const a=A(id);await upd('artikelen',{id},{antwoord_fotos:{...(a.antwoord_fotos||{}),[a.antwoorden[+ans]]:url}})}else await upd(TBL[kind],{id},{foto:url})}
+ catch(e){console.error(e);toast('Foto uploaden mislukt.');return}
+ await load()}
+const rmFoto=()=>{const e=S.ed;S.ed=null;return act(()=>upd(TBL[e.kind],{id:e.id},{foto:null}))};
 const ed=(kind,id)=>{S.ed={kind,id,del:0};draw()};
 const edObj=e=>e.kind=='inv'?A(e.id):e.kind=='bel'?BL(e.id):e.kind=='doz'?DZ(e.id):DB.sym.find(x=>x.id==e.id)||NONE;
 async function edSave(){const e=S.ed,o=edObj(e),n=gv('en');if(!n)return;const v={naam:n};
@@ -198,7 +208,7 @@ function shopCard(){return `<div class="card"><h2>Boodschappenlijstje</h2><div c
 function day(){if(S.edit&&(adm()||DB.dagen[S.day]))return wiz(S.day);
  const k=S.day,gc=DB.dagen[k],on=DB.ds.filter(x=>x.dag==k).map(x=>x.symbool_id);
  let h=head(nlDate(k,{weekday:'long',day:'numeric',month:'long'}),'cal')+'<div class="card"><h2>Op het programma</h2>';
- if(adm())h+=DB.sym.map(s=>`<button class="chip${on.includes(s.id)?' on':''}" onclick="tog(${s.id})">${si(s)} ${esc(s.naam)}</button>`).join('')+`<div class="row" style="margin-top:8px"><input type="text" id="ne" placeholder="🙂" style="width:64px"><input type="text" id="nn" placeholder="Nieuw symbool"><button class="btn" onclick="addSym()">+</button></div>`;
+ if(adm())h+=DB.sym.map(s=>`<button class="chip${on.includes(s.id)?' on':''}" onclick="tog(${s.id})">${si(s)} ${esc(s.naam)}</button>${pbtn('sym',s.id,'',!!s.foto)}`).join('')+`<div class="row" style="margin-top:8px"><input type="text" id="ne" placeholder="🙂" style="width:64px"><input type="text" id="nn" placeholder="Nieuw symbool"><button class="btn" onclick="addSym()">+</button></div>`;
  else h+=on.length?on.map(i=>{const s=DB.sym.find(z=>z.id==i);return s?`<span class="chip">${si(s)} ${esc(s.naam)}</span>`:''}).join(''):'<span class="mute">Niets bijzonders.</span>';
  h+='</div>';
  if(adm()){
@@ -219,10 +229,10 @@ function editCard(){const e=S.ed,o=edObj(e);let h=`<div class="card" style="bord
  if(e.kind=='sym')h+=`<input type="text" id="ee" value="${esc(o.emoji)}" style="margin-bottom:8px">`;
  if(e.kind=='bel'||(e.kind=='inv'&&o.cat=='brood'))h+=`<select id="et" style="margin-bottom:8px"><option value="h"${o.soort=='h'?' selected':''}>Hartig</option><option value="z"${o.soort=='z'?' selected':''}>Zoet</option></select>`;
  if(e.kind=='inv'&&o.cat=='fruit')h+=`<input type="text" id="eq" value="${esc(o.vraag||'')}" placeholder="Extra vraag (leeg = geen)" style="margin-bottom:8px"><input type="text" id="eo" value="${esc((o.antwoorden||[]).join(', '))}" placeholder="Antwoorden, gescheiden door komma" style="margin-bottom:8px">`;
- return h+`<div class="row">${B('Opslaan','edSave()')}${B('Annuleer','S.ed=null;draw()','ghost')}${e.del?B('Zeker verwijderen','edDel()','ghost warn'):B('Verwijderen','S.ed.del=1;draw()','ghost')}</div></div>`}
-const eb=(k,id)=>`<button class="chip sm" onclick="ed('${k}',${id})" aria-label="Aanpassen">✏️</button> `;
+ return h+(o.foto?`<div style="margin-bottom:8px">${B('Foto verwijderen','rmFoto()','ghost sm')}</div>`:'')+`<div class="row">${B('Opslaan','edSave()')}${B('Annuleer','S.ed=null;draw()','ghost')}${e.del?B('Zeker verwijderen','edDel()','ghost warn'):B('Verwijderen','S.ed.del=1;draw()','ghost')}</div></div>`}
+const eb=(k,id)=>pbtn(k,id,'',!!edObj({kind:k,id}).foto)+`<button class="chip sm" onclick="ed('${k}',${id})" aria-label="Aanpassen">✏️</button> `;
 function inv(){let h=head('Voorraad')+(S.ed?editCard():'');
- Object.keys(CATS).forEach(c=>{h+=`<div class="card"><h2>${CATS[c]}</h2>${DB.art.filter(x=>x.cat==c).map(x=>`<div class="row sp"><span class="${x.aantal<=2?'warn':''}">${eb('inv',x.id)}${esc(x.naam)}${x.soort?` <button class="chip sm" onclick="flip('inv',${x.id})">${TT[x.soort]}</button>`:''}${x.vraag?' <span class="mute">+vraag</span>':''}</span>${stp(`qq(${x.id},`,x.aantal)}</div>`).join('')||'<span class="mute">Nog niets.</span>'}</div>`});
+ Object.keys(CATS).forEach(c=>{h+=`<div class="card"><h2>${CATS[c]}</h2>${DB.art.filter(x=>x.cat==c).map(x=>`<div class="row sp"><span class="${x.aantal<=2?'warn':''}">${eb('inv',x.id)}${esc(x.naam)}${x.soort?` <button class="chip sm" onclick="flip('inv',${x.id})">${TT[x.soort]}</button>`:''}${x.vraag?`<div class="mute">${x.antwoorden.map((a,j)=>pbtn('inv',x.id,String(j),!!(x.antwoord_fotos||{})[a])+esc(a)).join(' ')}</div>`:''}</span>${stp(`qq(${x.id},`,x.aantal)}</div>`).join('')||'<span class="mute">Nog niets.</span>'}</div>`});
  h+=`<div class="card"><h2>Beleg in huis (sandwichen)</h2>${DB.bel.map(b=>`<div class="row sp"><span>${eb('bel',b.id)}${esc(b.naam)} <button class="chip sm" onclick="flip('bel',${b.id})">${TT[b.soort]}</button></span><button class="chip${b.aanwezig?' on':''}" onclick="bOn(${b.id})">${b.aanwezig?'Aanwezig':'Niet aanwezig'}</button></div>`).join('')}<div class="row"><input type="text" id="bn" placeholder="Nieuw beleg"><select id="bt" style="width:110px"><option value="h">Hartig</option><option value="z">Zoet</option></select><button class="btn" onclick="addBel()">+</button></div></div>`;
  h+=`<div class="card"><h2>Koekendozen</h2>${DB.doz.map(d=>`<div class="row sp"><span>${eb('doz',d.id)}${esc(d.naam)}</span>${stp(`dd(${d.id},`,d.aantal)}</div>`).join('')}<div class="row"><input type="text" id="dn" placeholder="Nieuwe doos"><button class="btn" onclick="addDoz()">+</button></div></div>`;
  h+=`<div class="card"><h2>Nieuw artikel</h2><select id="ic">${Object.keys(CATS).map(c=>`<option value="${c}">${CATS[c]}</option>`).join('')}</select><div class="row" style="margin:6px 0"><input type="text" id="in" placeholder="Naam"><select id="it" style="width:110px"><option value="h">Hartig</option><option value="z">Zoet</option></select></div><input type="text" id="iq" placeholder="Fruit: extra vraag (optioneel)" style="margin-bottom:6px"><input type="text" id="io" placeholder="Antwoorden, gescheiden door komma"><div style="margin-top:8px">${B('Toevoegen','addInv()')}</div><div class="mute" style="margin-top:6px">Hartig/zoet geldt enkel voor boterhammen.</div></div>`;
