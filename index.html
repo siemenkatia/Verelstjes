@@ -258,7 +258,7 @@ function wxCard(k){const p=wxPlace(k),w=wxGet(p);let b;
 /* ---------- tekenen + terugknop ---------- */
 let POP=0,LS='';
 addEventListener('popstate',e=>{let t=e.state||{scr:'home'};if(t.scr!='home'&&!S.who||t.scr=='pin')t={scr:'home'};S.scr=t.scr;S.day=t.day||S.day;S.edit=t.edit||0;S.step=t.step||0;S.pend=null;S.cf=null;S.ed=null;POP=1;draw();POP=0});
-function draw(){const a=document.getElementById('app'),vals={};a.querySelectorAll('input[type=text]').forEach(i=>{if(i.id&&i.value)vals[i.id]=i.value});
+function draw(){const a=document.getElementById('app'),vals={};a.className=S.scr=='cal'?'wide':'';a.querySelectorAll('input[type=text]').forEach(i=>{if(i.id&&i.value)vals[i.id]=i.value});
  const f={home,pin:pinS,cal,day,inv,shop};
  a.innerHTML=(S.err?`<div class="card warn">${S.err}</div>`:'')+(S.toast?`<div class="card">${esc(S.toast)}</div>`:'')+(S.loading?'<div class="mute">Laden…</div>':f[S.scr]());
  for(const id in vals){const e=document.getElementById(id);if(e&&!e.value)e.value=vals[id]}
