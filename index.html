@@ -4,14 +4,7 @@
 <title>Verelstjes</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-@media(min-width:700px){
-#app.wide{max-width:1200px}
-#app.wide .cal{gap:8px}
-#app.wide .dn{font-size:16px}
-#app.wide .day{min-height:clamp(96px,15vh,170px);font-size:18px;padding:8px;border-radius:14px}
-#app.wide .sy{display:flex;flex-wrap:wrap;gap:4px;font-size:30px;line-height:1.1}
-}
- <style>
+<style>
 :root{--bg:#eef4fb;--card:#fff;--ink:#17324d;--mute:#5d7188;--line:#d5e1ee;--acc:#f2b632;--accink:#4a3300;--bad:#c0392b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root{--bg:#0f1c2b;--card:#182a3f;--ink:#e8f0f8;--mute:#9db0c4;--line:#2b4260;--bad:#ff8a7a}}
 *{box-sizing:border-box}html{color-scheme:light dark}
@@ -54,6 +47,13 @@ input[type=text],input[type=date],select{font:inherit;padding:9px;border-radius:
 .it{width:100%;margin:4px 0;padding:12px;border:2px solid var(--line);background:var(--card);border-radius:14px;font-size:18px;font-weight:700;text-align:left;display:flex;gap:10px;align-items:center}
 .it.done{opacity:.55;text-decoration:line-through}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+@media(min-width:700px){
+#app.wide{max-width:1200px}
+#app.wide .cal{gap:8px}
+#app.wide .dn{font-size:16px}
+#app.wide .day{min-height:clamp(96px,15vh,170px);font-size:18px;padding:8px;border-radius:14px}
+#app.wide .sy{display:flex;flex-wrap:wrap;gap:4px;font-size:30px;line-height:1.1}
+}
 </style></head><body><div id="app"></div>
 <script>
 const SB_URL='https://vuotbihzgvhlanlwdtle.supabase.co',SB_KEY='sb_publishable_pWXc0TpXdLwZKGnrU1dhFw_qzmGP4OV';
