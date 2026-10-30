@@ -185,7 +185,7 @@ function cal(){const y=S.m.getFullYear(),m=S.m.getMonth(),t=new Date(),first=(ne
  return h+'</div>'}
 const tile=(o,c,dis)=>`<button class="tile${dis?' dis':''}" onclick="pick('${c}',${o.id})">${ph(o,c)}${esc(o.naam)}</button>`;
 function minis(k,cs,ro,who){return pk(k,who||S.who).map(p=>{if(!cs.includes(p.soort))return'';const o=p.soort=='bel'?BL(p.beleg_id):A(p.artikel_id),af=p.antwoord&&o.antwoord_fotos&&o.antwoord_fotos[p.antwoord];
- return `<span class="mini">${ph(af?{foto:af}:o,p.soort)}${esc(o.naam)}${p.antwoord?'<br>'+esc(p.antwoord):''}${p.doos_id?'<br>'+esc(DZ(p.doos_id).naam):''}${ro?'':`<button onclick="rm(${p.id})" aria-label="Verwijder">✕</button>`}</span>`}).join('')}
+ return `<span class="mini">${ph(af?{foto:af}:o,p.soort)}${esc(o.naam)}${p.antwoord?'<br>'+esc(p.antwoord):''}${ro?'':`<button onclick="rm(${p.id})" aria-label="Verwijder">✕</button>`}</span>`+(p.doos_id?`<span class="mini">${ph(DZ(p.doos_id),'doos')}${esc(DZ(p.doos_id).naam)}</span>`:'')}).join('')}
 const ALL=[...Object.keys(CATS),'bel'];
 const mine=(k,w)=>{const L=pk(k,w);return L.length?L.map(p=>`<span class="chip">${esc(lab(p))}</span>`).join(''):'<span class="mute">Nog niets gekozen.</span>'};
 function steps(k){const g=cfgOf(k),s=[];if(g.hartig+g.zoet>0)s.push('brood');if(g.dessert)s.push('dessert');if(g.koek){s.push('koek');if(cnt(k,S.who,'koek'))s.push('doos')}if(g.fruit)s.push('fruit');if(g.sap)s.push('sap');return s}
@@ -217,9 +217,9 @@ function day(){if(S.edit&&(adm()||DB.dagen[S.day]))return wiz(S.day);
   else{h+=`<div class="row">${B('Boterhammen',"setT('b')",gc.type=='b'?'':'ghost')}${B('Sandwich',"setT('s')",gc.type=='s'?'':'ghost')}</div>`;
    [['hartig','Hartig beleg'],['zoet','Zoet beleg'],...SC.map(c=>[c,CATS[c]])].forEach(([f,l])=>h+=`<div class="row sp"><span>${l}</span>${stp(`chg('${f}',`,gc[f])}</div>`);
    h+=B('Standaard voor elke '+nlDate(k,{weekday:'long'}),'stdWeek()','ghost sm')}
-  h+=`</div>${parentCard(k)}<div class="card"><h2>Gekozen door de kinderen</h2>${FAM.filter(c=>c.kid).map(c=>`<div style="margin:6px 0"><span class="who" style="color:${c.c}">${c.n}</span><br>${mine(k,c.id)}</div>`).join('')}</div>`}
+  h+=`</div>${parentCard(k)}<div class="card"><h2>Gekozen door de kinderen</h2>${FAM.filter(c=>c.kid).map(c=>`<div style="margin:6px 0"><span class="who" style="color:${c.c}">${c.n}</span><div>${minis(k,ALL,1,c.id)||'<span class="mute">Nog niets gekozen.</span>'}</div></div>`).join('')}</div>`}
  else{h+=wxCard(k)+'<div class="card"><h2>Schoollijstje</h2>';
-  h+=gc?mine(k,S.who)+`<div style="margin-top:8px">${B(pk(k,S.who).length?'Aanpassen':'Maken','S.edit=1;S.step=0;draw()')}</div>`:'<span class="mute">Mammie en pappie hebben deze dag nog niet ingesteld.</span>';
+  h+=gc?(minis(k,ALL,1)||'<span class="mute">Nog niets gekozen.</span>')+`<div style="margin-top:8px">${B(pk(k,S.who).length?'Aanpassen':'Maken','S.edit=1;S.step=0;draw()')}</div>`:'<span class="mute">Mammie en pappie hebben deze dag nog niet ingesteld.</span>';
   h+='</div>'}
  const TK=DB.taken.filter(t=>t.dag==k);
  h+=`<div class="card"><h2>Taken</h2>${TK.length?TK.map(t=>adm()?`<div style="margin:8px 0"><div class="row sp"><span>• ${esc(t.tekst)}</span><button class="chip sm" onclick="delT(${t.id})" aria-label="Verwijder">✕</button></div>${FAM.filter(c=>c.kid).map(c=>{const d=DB.klaar.some(x=>x.taak_id==t.id&&x.persoon==c.id);return `<span class="chip${d?' on':''}">${c.n}${d?' ✓':' ○'}</span>`}).join('')}</div>`:`<label class="row" style="margin:6px 0"><input type="checkbox" ${DB.klaar.some(x=>x.taak_id==t.id&&x.persoon==S.who)?'checked':''} onchange="doneT(${t.id})"> ${esc(t.tekst)}</label>`).join(''):'<span class="mute">Geen taken.</span>'}`;
