@@ -46,6 +46,12 @@ input[type=text],input[type=date],select{font:inherit;padding:9px;border-radius:
 .mini button{position:absolute;top:-8px;right:-8px;border-radius:50%;width:28px;height:28px;padding:0;border:0;background:var(--bad);color:#fff;font-weight:800}
 .it{width:100%;margin:4px 0;padding:12px;border:2px solid var(--line);background:var(--card);border-radius:14px;font-size:18px;font-weight:700;text-align:left;display:flex;gap:10px;align-items:center}
 .it.done{opacity:.55;text-decoration:line-through}
+details.card>summary{list-style:none;cursor:pointer;font-size:19px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:32px}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:'▾';color:var(--mute);transform:rotate(-90deg);transition:transform .15s}
+details.card[open]>summary::after{transform:none}
+details.card[open]>summary{margin-bottom:8px}
+.symi{display:inline-block}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 @media(min-width:700px){
 #app.wide{max-width:1200px}
@@ -59,15 +65,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 const SB_URL='https://vuotbihzgvhlanlwdtle.supabase.co',SB_KEY='sb_publishable_pWXc0TpXdLwZKGnrU1dhFw_qzmGP4OV';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const FAM=[{id:'lina',n:'Lina',c:'#e0679b',kid:1},{id:'lois',n:'Loïs',c:'#3d9be0',kid:1},{id:'lenn',n:'Lenn',c:'#2f9e6e',kid:1},{id:'mammie',n:'Mammie',c:'#8c5fd1'},{id:'pappie',n:'Pappie',c:'#e07a3d'}];
-const KIDS=['lina','lois','lenn'],SC=['fruit','dessert','koek','sap'],TT={h:'Hartig',z:'Zoet'};
-const CATS={brood:'Boterhammen',fruit:'Fruit',dessert:'Dessertjes',koek:'Koeken',sap:'Sapjes'};
-const ICON={brood:'🥪',bel:'🧀',fruit:'🍎',dessert:'🍮',koek:'🍪',sap:'🧃',doos:'📦'};
-const FREE={type:'free',hartig:99,zoet:99,fruit:99,dessert:99,koek:99,sap:99};
-const CFG=['type','hartig','zoet','fruit','dessert','koek','sap'];
+const KIDS=['lina','lois','lenn'],SC=['fruit','dessert','snoep','koek','sap'],TT={h:'Hartig',z:'Zoet'};
+const CATS={brood:'Boterhammen',fruit:'Fruit',dessert:'Dessertjes',snoep:'Snoep',koek:'Koeken',sap:'Sapjes'};
+const ICON={brood:'🥪',bel:'🧀',fruit:'🍎',dessert:'🍮',snoep:'🍬',koek:'🍪',sap:'🧃',doos:'📦'};
+const FREE={type:'free',hartig:99,zoet:99,fruit:99,dessert:99,snoep:99,koek:99,sap:99};
+const CFG=['type','hartig','zoet','fruit','dessert','snoep','koek','sap'];
 const TBL={inv:'artikelen',bel:'beleg',doz:'dozen',sym:'symbolen'};
 const NONE={naam:'',antwoorden:[],antwoord_fotos:{},aantal:0};
 let DB={art:[],bel:[],doz:[],sym:[],ds:[],dagen:{},week:{},keuzes:[],taken:[],klaar:[],shop:[]};
-const S={scr:'home',who:null,pin:'',code:'',m:new Date(),day:null,edit:0,step:0,pend:null,ed:null,cf:null,toast:null,err:null,loading:1,vak:0};
+const S={scr:'home',who:null,pin:'',code:'',m:new Date(),day:null,edit:0,step:0,pend:null,ed:null,cf:null,toast:null,err:null,loading:1,vak:0,op:{},q:''};
 const P=id=>FAM.find(f=>f.id==id),adm=()=>!!S.who&&!P(S.who).kid;
 const A=id=>DB.art.find(x=>x.id==id)||NONE,BL=id=>DB.bel.find(x=>x.id==id)||NONE,DZ=id=>DB.doz.find(x=>x.id==id)||NONE;
 const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -78,6 +84,10 @@ const gv=id=>{const e=document.getElementById(id);if(!e)return'';const v=e.value
 const B=(t,f,c)=>`<button class="btn ${c||''}" onclick="${f}">${t}</button>`;
 const stp=(f,v)=>`<span class="row">${B('−',f+'-1)','ghost sm')}<span class="q">${v}</span>${B('+',f+'1)','sm')}</span>`;
 const pick_=o=>({...o});
+/* ---------- opklapbare kaders (enkel ouders) ---------- */
+const fold=(id,t,body,def)=>{if(!adm())return `<div class="card"><h2>${t}</h2>${body}</div>`;
+ const o=id in S.op?S.op[id]:def;return `<details class="card"${o?' open':''} ontoggle="S.op['${id}']=this.open"><summary>${t}</summary>${body}</details>`};
+function zoek(){const q=(S.q||'').trim().toLowerCase();document.querySelectorAll('#rest .symi').forEach(e=>{e.style.display=!q||e.dataset.n.includes(q)?'':'none'})}
 /* ---------- data ---------- */
 async function ok(p){const r=await p;if(r.error)throw r.error;return r.data}
 const upd=(t,m,v)=>ok(sb.from(t).update(v).match(m));
@@ -115,7 +125,7 @@ async function cfOk(){const c=S.cf;S.cf=null;await act(async()=>{await ok(sb.rpc
 const pickCfg=o=>Object.fromEntries(CFG.filter(f=>o&&f in o).map(f=>[f,o[f]]));
 const setDay=()=>act(()=>ins('dagen',{dag:S.day,...pickCfg(DB.week[dow(S.day)])}));
 function setT(t){const k=S.day;if(DB.dagen[k].type!=t)ask(k,['brood','bel'],()=>upd('dagen',{dag:k},{type:t}))}
-function chg(f,d){const k=S.day,g=DB.dagen[k];if(g[f]+d<0)return;ask(k,f=='hartig'||f=='zoet'?['brood','bel']:[f],()=>upd('dagen',{dag:k},{[f]:g[f]+d}))}
+function chg(f,d){const k=S.day,g=DB.dagen[k];if((g[f]||0)+d<0)return;ask(k,f=='hartig'||f=='zoet'?['brood','bel']:[f],()=>upd('dagen',{dag:k},{[f]:(g[f]||0)+d}))}
 const stdWeek=()=>act(async()=>{await ok(sb.from('weekstandaard').upsert({weekdag:dow(S.day),...pickCfg(DB.dagen[S.day])}));toast('Opgeslagen als standaard voor elke '+nlDate(S.day,{weekday:'long'})+'.')});
 function applyWeek(){const y=S.m.getFullYear(),m=S.m.getMonth(),rows=[];for(let d=1;d<=new Date(y,m+1,0).getDate();d++){const k=key(y,m,d);if(!DB.dagen[k]&&DB.week[dow(k)])rows.push({dag:k,...pickCfg(DB.week[dow(k)])})}
  act(async()=>{if(rows.length)await ok(sb.from('dagen').upsert(rows,{onConflict:'dag',ignoreDuplicates:true}));toast(rows.length+' dagen ingesteld.')})}
@@ -174,9 +184,8 @@ function head(t,back){const nav=adm()?`<div class="row" style="margin-bottom:10p
  return `<div class="top">${back?B('‹ Terug',`go('${back}')`,'ghost'):'<span></span>'}${B('Andere persoon','logout()','ghost')}</div>${nav}${t?`<h1>${t}</h1>`:''}`}
 function home(){return `<h1>Verelstjes</h1><h2>Wie ben jij?</h2><div class="grid">${FAM.map(f=>`<button class="prof" onclick="pickWho('${f.id}')">${f.kid?'':'<span class="lock">🔒</span>'}${av(f)}${f.n}</button>`).join('')}</div>`}
 function pinS(){const f=P(S.who);return `<div class="top">${B('‹ Terug',"go('home')",'ghost')}</div><div style="text-align:center">${av(f)}<h2>Hallo ${f.n}</h2><div class="mute">Geef je code van 4 cijfers in</div></div><div class="dots">${[0,1,2,3].map(i=>i<S.pin.length?'●':'○').join('')}</div><div class="pin">${['1','2','3','4','5','6','7','8','9','','0','<'].map(x=>x?`<button onclick="num('${x}')">${x=='<'?'⌫':x}</button>`:'<span></span>').join('')}</div>`}
-const low=()=>DB.art.filter(x=>x.aantal<=2).map(x=>x.naam+' ('+x.aantal+')');
 function cal(){const y=S.m.getFullYear(),m=S.m.getMonth(),t=new Date(),first=(new Date(y,m,1).getDay()+6)%7,n=new Date(y,m+1,0).getDate();
- let h=head('')+(adm()?(low().length?`<div class="card warn">Bijna op: ${esc(low().join(', '))}</div>`:'')+`<div style="margin-bottom:10px">${B('Standaardweek toepassen op deze maand','applyWeek()','ghost sm')} ${B('Vakantie','S.vak=!S.vak;draw()',S.vak?'sm':'ghost sm')}</div>${S.vak?vakCard():''}`:'');
+ let h=head('')+(adm()?`<div style="margin-bottom:10px">${B('Standaardweek toepassen op deze maand','applyWeek()','ghost sm')} ${B('Vakantie','S.vak=!S.vak;draw()',S.vak?'sm':'ghost sm')}</div>${S.vak?vakCard():''}`:'');
  h+=`<div class="top">${B('‹','mv(-1)')}<h2 style="margin:0;text-transform:capitalize">${new Date(y,m,1).toLocaleDateString('nl-BE',{month:'long',year:'numeric'})}</h2>${B('›','mv(1)')}</div><div class="cal">`;
  ['ma','di','wo','do','vr','za','zo'].forEach(d=>h+=`<div class="dn">${d}</div>`);
  for(let i=0;i<first;i++)h+='<div class="day empty"></div>';
@@ -188,8 +197,8 @@ function minis(k,cs,ro,who){return pk(k,who||S.who).map(p=>{if(!cs.includes(p.so
  return `<span class="mini">${ph(af?{foto:af}:o,p.soort)}${esc(o.naam)}${p.antwoord?'<br>'+esc(p.antwoord):''}${ro?'':`<button onclick="rm(${p.id})" aria-label="Verwijder">✕</button>`}</span>`+(p.doos_id?`<span class="mini">${ph(DZ(p.doos_id),'doos')}${esc(DZ(p.doos_id).naam)}</span>`:'')}).join('')}
 const ALL=[...Object.keys(CATS),'bel'];
 const mine=(k,w)=>{const L=pk(k,w);return L.length?L.map(p=>`<span class="chip">${esc(lab(p))}</span>`).join(''):'<span class="mute">Nog niets gekozen.</span>'};
-function steps(k){const g=cfgOf(k),s=[];if(g.hartig+g.zoet>0)s.push('brood');if(g.dessert)s.push('dessert');if(g.koek){s.push('koek');if(cnt(k,S.who,'koek'))s.push('doos')}if(g.fruit)s.push('fruit');if(g.sap)s.push('sap');return s}
-function wiz(k){const g=cfgOf(k),w=S.who,st=steps(k),i=S.step,c=st[i],TI={brood:g.type=='s'?'Sandwich':'Boterhammen',dessert:'Dessertje',koek:'Koek',doos:'Koekendoos',fruit:'Fruit',sap:'Sapje'};
+function steps(k){const g=cfgOf(k),s=[];if(g.hartig+g.zoet>0)s.push('brood');if(g.dessert)s.push('dessert');if(g.snoep)s.push('snoep');if(g.koek){s.push('koek');if(cnt(k,S.who,'koek'))s.push('doos')}if(g.fruit)s.push('fruit');if(g.sap)s.push('sap');return s}
+function wiz(k){const g=cfgOf(k),w=S.who,st=steps(k),i=S.step,c=st[i],TI={brood:g.type=='s'?'Sandwich':'Boterhammen',dessert:'Dessertje',snoep:'Snoep',koek:'Koek',doos:'Koekendoos',fruit:'Fruit',sap:'Sapje'};
  let h=`<div class="top">${B('‹ Stoppen','S.edit=0;draw()','ghost')}<span class="mute">${c?`${i+1} / ${st.length}`:''}</span></div>`;
  if(!c)return h+`<div class="card"><h1>${st.length?'Klaar! 🎉':'Niets te kiezen'}</h1>${minis(k,ALL,1)}</div>`+B('Sluiten','S.edit=0;draw()','big');
  h+=`<h1>${ICON[c=='brood'&&g.type=='s'?'bel':c]} ${TI[c]}</h1>`;
@@ -203,28 +212,30 @@ function wiz(k){const g=cfgOf(k),w=S.who,st=steps(k),i=S.step,c=st[i],TI={brood:
   else{const full=cnt(k,w,c)>=g[c];h+=`<div class="tiles">${DB.art.filter(x=>x.cat==c&&x.aantal>0).map(x=>tile(x,c,full)).join('')}</div>`}}
  const need=c=='doos'&&pk(k,w).some(p=>p.soort=='koek'&&!p.doos_id);
  return h+`<div class="row" style="margin-top:16px">${i>0?B('‹ Terug','S.step--;draw()','ghost big'):''}${need?'':B(i==st.length-1?'Klaar ✓':'Verder ›','S.step++;draw()','big')}</div>`}
-function parentCard(k){return `<div class="card"><h2>Mammie en pappie</h2>${FAM.filter(f=>!f.kid).map(f=>`<div style="margin:6px 0"><span class="who" style="color:${f.c}">${f.n}</span><div>${minis(k,ALL,1,f.id)||'<span class="mute">Nog niets gekozen.</span>'}</div></div>`).join('')}${B(pk(k,S.who).length?'Mijn lijstje aanpassen':'Mijn lijstje maken','S.edit=1;S.step=0;draw()')}</div>`}
-function shopCard(){return `<div class="card"><h2>Boodschappenlijstje</h2><div class="mute" style="margin-bottom:6px">Is er iets op? Schrijf het hier.</div>${DB.shop.filter(x=>x.persoon==S.who).map(x=>`<div class="row sp"><span>${x.in_kar?'✅':'⬜'} ${esc(x.tekst)}</span>${x.in_kar?'':`<button class="chip sm" onclick="delShop(${x.id})" aria-label="Verwijder">✕</button>`}</div>`).join('')}<div class="row" style="margin-top:8px"><input type="text" id="ns" placeholder="Wat is er op?"><button class="btn" onclick="addShop()">+</button></div></div>`}
+function parentCard(k){return fold('d-ouders','Mammie en pappie',`${FAM.filter(f=>!f.kid).map(f=>`<div style="margin:6px 0"><span class="who" style="color:${f.c}">${f.n}</span><div>${minis(k,ALL,1,f.id)||'<span class="mute">Nog niets gekozen.</span>'}</div></div>`).join('')}${B(pk(k,S.who).length?'Mijn lijstje aanpassen':'Mijn lijstje maken','S.edit=1;S.step=0;draw()')}`,0)}
+function shopCard(){return fold('d-shop','Boodschappenlijstje',`<div class="mute" style="margin-bottom:6px">Is er iets op? Schrijf het hier.</div>${DB.shop.filter(x=>x.persoon==S.who).map(x=>`<div class="row sp"><span>${x.in_kar?'✅':'⬜'} ${esc(x.tekst)}</span>${x.in_kar?'':`<button class="chip sm" onclick="delShop(${x.id})" aria-label="Verwijder">✕</button>`}</div>`).join('')}<div class="row" style="margin-top:8px"><input type="text" id="ns" placeholder="Wat is er op?"><button class="btn" onclick="addShop()">+</button></div>`,0)}
 function day(){if(S.edit&&(adm()||DB.dagen[S.day]))return wiz(S.day);
  const k=S.day,gc=DB.dagen[k],on=DB.ds.filter(x=>x.dag==k).map(x=>x.symbool_id);
- let h=head(nlDate(k,{weekday:'long',day:'numeric',month:'long'}),'cal')+'<div class="card"><h2>Op het programma</h2>';
- if(adm())h+=DB.sym.map(s=>`<button class="chip${on.includes(s.id)?' on':''}" onclick="tog(${s.id})">${si(s)} ${esc(s.naam)}</button>${pbtn('sym',s.id,'',!!s.foto)}`).join('')+`<div class="row" style="margin-top:8px"><input type="text" id="ne" placeholder="🙂" style="width:64px"><input type="text" id="nn" placeholder="Nieuw symbool"><button class="btn" onclick="addSym()">+</button></div>`;
- else h+=on.length?on.map(i=>{const s=DB.sym.find(z=>z.id==i);return s?`<span class="chip">${si(s)} ${esc(s.naam)}</span>`:''}).join(''):'<span class="mute">Niets bijzonders.</span>';
- h+='</div>';
+ let h=head(nlDate(k,{weekday:'long',day:'numeric',month:'long'}),'cal');
+ if(adm()){const srt=(x,y)=>x.naam.localeCompare(y.naam,'nl',{sensitivity:'base'}),sel=DB.sym.filter(x=>on.includes(x.id)).sort(srt),rest=DB.sym.filter(x=>!on.includes(x.id)).sort(srt),q=(S.q||'').trim().toLowerCase();
+  const chip=(x,hide)=>`<span class="symi" data-n="${esc(x.naam.toLowerCase())}"${hide?' style="display:none"':''}><button class="chip${on.includes(x.id)?' on':''}" onclick="tog(${x.id})">${si(x)} ${esc(x.naam)}</button>${pbtn('sym',x.id,'',!!x.foto)}</span>`;
+  h+=fold('d-prog','Op het programma',`<input type="text" id="zk" placeholder="Zoek symbool…" value="${esc(S.q||'')}" oninput="S.q=this.value;zoek()" style="margin-bottom:8px">`+(sel.length?`<div>${sel.map(x=>chip(x,0)).join('')}</div><div style="border-top:2px solid var(--line);margin:6px 0"></div>`:'')+`<div id="rest">${rest.map(x=>chip(x,q&&!x.naam.toLowerCase().includes(q))).join('')}</div><div class="row" style="margin-top:8px"><input type="text" id="ne" placeholder="🙂" style="width:64px"><input type="text" id="nn" placeholder="Nieuw symbool"><button class="btn" onclick="addSym()">+</button></div>`,1)}
+ else h+='<div class="card"><h2>Op het programma</h2>'+(on.length?on.map(i=>{const s=DB.sym.find(z=>z.id==i);return s?`<span class="chip">${si(s)} ${esc(s.naam)}</span>`:''}).join(''):'<span class="mute">Niets bijzonders.</span>')+'</div>';
  if(adm()){
-  h+=wxCard(k)+(S.cf?`<div class="card warn">Kinderen hebben hiervoor al gekozen. Hun keuzes voor dit onderdeel vervallen als je dit wijzigt.<div class="row" style="margin-top:8px">${B('Ja, wijzig','cfOk()')}${B('Annuleer','S.cf=null;draw()','ghost')}</div></div>`:'')+'<div class="card"><h2>Schoollijstje instellen</h2>';
-  if(!gc)h+=B('Dag instellen','setDay()');
-  else{h+=`<div class="row">${B('Boterhammen',"setT('b')",gc.type=='b'?'':'ghost')}${B('Sandwich',"setT('s')",gc.type=='s'?'':'ghost')}</div>`;
-   [['hartig','Hartig beleg'],['zoet','Zoet beleg'],...SC.map(c=>[c,CATS[c]])].forEach(([f,l])=>h+=`<div class="row sp"><span>${l}</span>${stp(`chg('${f}',`,gc[f])}</div>`);
-   h+=B('Standaard voor elke '+nlDate(k,{weekday:'long'}),'stdWeek()','ghost sm')}
-  h+=`</div>${parentCard(k)}<div class="card"><h2>Gekozen door de kinderen</h2>${FAM.filter(c=>c.kid).map(c=>`<div style="margin:6px 0"><span class="who" style="color:${c.c}">${c.n}</span><div>${minis(k,ALL,1,c.id)||'<span class="mute">Nog niets gekozen.</span>'}</div></div>`).join('')}</div>`}
+  h+=wxCard(k)+(S.cf?`<div class="card warn">Kinderen hebben hiervoor al gekozen. Hun keuzes voor dit onderdeel vervallen als je dit wijzigt.<div class="row" style="margin-top:8px">${B('Ja, wijzig','cfOk()')}${B('Annuleer','S.cf=null;draw()','ghost')}</div></div>`:'');
+  let sb='';
+  if(!gc)sb+=B('Dag instellen','setDay()');
+  else{sb+=`<div class="row">${B('Boterhammen',"setT('b')",gc.type=='b'?'':'ghost')}${B('Sandwich',"setT('s')",gc.type=='s'?'':'ghost')}</div>`;
+   [['hartig','Hartig beleg'],['zoet','Zoet beleg'],...SC.map(c=>[c,CATS[c]])].forEach(([f,l])=>sb+=`<div class="row sp"><span>${l}</span>${stp(`chg('${f}',`,gc[f]||0)}</div>`);
+   sb+=B('Standaard voor elke '+nlDate(k,{weekday:'long'}),'stdWeek()','ghost sm')}
+  h+=fold('d-set','Schoollijstje instellen',sb,0)+parentCard(k)+fold('d-kids','Gekozen door de kinderen',`${FAM.filter(c=>c.kid).map(c=>`<div style="margin:6px 0"><span class="who" style="color:${c.c}">${c.n}</span><div>${minis(k,ALL,1,c.id)||'<span class="mute">Nog niets gekozen.</span>'}</div></div>`).join('')}`,1)}
  else{h+=wxCard(k)+'<div class="card"><h2>Schoollijstje</h2>';
   h+=gc?(minis(k,ALL,1)||'<span class="mute">Nog niets gekozen.</span>')+`<div style="margin-top:8px">${B(pk(k,S.who).length?'Aanpassen':'Maken','S.edit=1;S.step=0;draw()')}</div>`:'<span class="mute">Mammie en pappie hebben deze dag nog niet ingesteld.</span>';
   h+='</div>'}
  const TK=DB.taken.filter(t=>t.dag==k);
- h+=`<div class="card"><h2>Taken</h2>${TK.length?TK.map(t=>adm()?`<div style="margin:8px 0"><div class="row sp"><span>• ${esc(t.tekst)}</span><button class="chip sm" onclick="delT(${t.id})" aria-label="Verwijder">✕</button></div>${FAM.filter(c=>c.kid).map(c=>{const d=DB.klaar.some(x=>x.taak_id==t.id&&x.persoon==c.id);return `<span class="chip${d?' on':''}">${c.n}${d?' ✓':' ○'}</span>`}).join('')}</div>`:`<label class="row" style="margin:6px 0"><input type="checkbox" ${DB.klaar.some(x=>x.taak_id==t.id&&x.persoon==S.who)?'checked':''} onchange="doneT(${t.id})"> ${esc(t.tekst)}</label>`).join(''):'<span class="mute">Geen taken.</span>'}`;
- h+=adm()?`<div class="row" style="margin-top:8px"><input type="text" id="nt" placeholder="Nieuwe taak"><button class="btn" onclick="addTask()">+</button></div>`:'';
- return h+'</div>'+shopCard()}
+ let tb=`${TK.length?TK.map(t=>adm()?`<div style="margin:8px 0"><div class="row sp"><span>• ${esc(t.tekst)}</span><button class="chip sm" onclick="delT(${t.id})" aria-label="Verwijder">✕</button></div>${FAM.filter(c=>c.kid).map(c=>{const d=DB.klaar.some(x=>x.taak_id==t.id&&x.persoon==c.id);return `<span class="chip${d?' on':''}">${c.n}${d?' ✓':' ○'}</span>`}).join('')}</div>`:`<label class="row" style="margin:6px 0"><input type="checkbox" ${DB.klaar.some(x=>x.taak_id==t.id&&x.persoon==S.who)?'checked':''} onchange="doneT(${t.id})"> ${esc(t.tekst)}</label>`).join(''):'<span class="mute">Geen taken.</span>'}`;
+ tb+=adm()?`<div class="row" style="margin-top:8px"><input type="text" id="nt" placeholder="Nieuwe taak"><button class="btn" onclick="addTask()">+</button></div>`:'';
+ return h+fold('d-taken','Taken',tb,0)+shopCard()}
 function editCard(){const e=S.ed,o=edObj(e);let h=`<div class="card" style="border-color:var(--acc)"><h2>Aanpassen</h2><input type="text" id="en" value="${esc(o.naam)}" style="margin-bottom:8px">`;
  if(e.kind=='sym')h+=`<input type="text" id="ee" value="${esc(o.emoji)}" style="margin-bottom:8px">`;
  if(e.kind=='bel'||(e.kind=='inv'&&o.cat=='brood'))h+=`<select id="et" style="margin-bottom:8px"><option value="h"${o.soort=='h'?' selected':''}>Hartig</option><option value="z"${o.soort=='z'?' selected':''}>Zoet</option></select>`;
@@ -232,12 +243,12 @@ function editCard(){const e=S.ed,o=edObj(e);let h=`<div class="card" style="bord
  return h+(o.foto?`<div style="margin-bottom:8px">${B('Foto verwijderen','rmFoto()','ghost sm')}</div>`:'')+`<div class="row">${B('Opslaan','edSave()')}${B('Annuleer','S.ed=null;draw()','ghost')}${e.del?B('Zeker verwijderen','edDel()','ghost warn'):B('Verwijderen','S.ed.del=1;draw()','ghost')}</div></div>`}
 const eb=(k,id)=>pbtn(k,id,'',!!edObj({kind:k,id}).foto)+`<button class="chip sm" onclick="ed('${k}',${id})" aria-label="Aanpassen">✏️</button> `;
 function inv(){let h=head('Voorraad')+(S.ed?editCard():'');
- Object.keys(CATS).forEach(c=>{h+=`<div class="card"><h2>${CATS[c]}</h2>${DB.art.filter(x=>x.cat==c).map(x=>`<div class="row sp"><span class="${x.aantal<=2?'warn':''}">${eb('inv',x.id)}${esc(x.naam)}${x.soort?` <button class="chip sm" onclick="flip('inv',${x.id})">${TT[x.soort]}</button>`:''}${x.vraag?`<div class="mute">${x.antwoorden.map((a,j)=>pbtn('inv',x.id,String(j),!!(x.antwoord_fotos||{})[a])+esc(a)).join(' ')}</div>`:''}</span>${stp(`qq(${x.id},`,x.aantal)}</div>`).join('')||'<span class="mute">Nog niets.</span>'}</div>`});
- h+=`<div class="card"><h2>Beleg in huis (sandwichen)</h2>${DB.bel.map(b=>`<div class="row sp"><span>${eb('bel',b.id)}${esc(b.naam)} <button class="chip sm" onclick="flip('bel',${b.id})">${TT[b.soort]}</button></span><button class="chip${b.aanwezig?' on':''}" onclick="bOn(${b.id})">${b.aanwezig?'Aanwezig':'Niet aanwezig'}</button></div>`).join('')}<div class="row"><input type="text" id="bn" placeholder="Nieuw beleg"><select id="bt" style="width:110px"><option value="h">Hartig</option><option value="z">Zoet</option></select><button class="btn" onclick="addBel()">+</button></div></div>`;
- h+=`<div class="card"><h2>Koekendozen</h2>${DB.doz.map(d=>`<div class="row sp"><span>${eb('doz',d.id)}${esc(d.naam)}</span>${stp(`dd(${d.id},`,d.aantal)}</div>`).join('')}<div class="row"><input type="text" id="dn" placeholder="Nieuwe doos"><button class="btn" onclick="addDoz()">+</button></div></div>`;
- h+=`<div class="card"><h2>Nieuw artikel</h2><select id="ic">${Object.keys(CATS).map(c=>`<option value="${c}">${CATS[c]}</option>`).join('')}</select><div class="row" style="margin:6px 0"><input type="text" id="in" placeholder="Naam"><select id="it" style="width:110px"><option value="h">Hartig</option><option value="z">Zoet</option></select></div><input type="text" id="iq" placeholder="Fruit: extra vraag (optioneel)" style="margin-bottom:6px"><input type="text" id="io" placeholder="Antwoorden, gescheiden door komma"><div style="margin-top:8px">${B('Toevoegen','addInv()')}</div><div class="mute" style="margin-top:6px">Hartig/zoet geldt enkel voor boterhammen.</div></div>`;
- h+=`<div class="card"><h2>Symbolen</h2>${DB.sym.map(s=>`<div class="row sp"><span>${eb('sym',s.id)}${si(s)} ${esc(s.naam)}</span></div>`).join('')||'<span class="mute">Nog geen symbolen. Voeg ze toe bij een dag.</span>'}</div>`;
- return h+`<div class="card"><h2>Code voor mammie en pappie</h2><div class="row"><input type="text" id="np" inputmode="numeric" maxlength="4" placeholder="Nieuwe code (4 cijfers)"><button class="btn" onclick="setPin()">Opslaan</button></div></div>`}
+ Object.keys(CATS).forEach(c=>{h+=fold('v-'+c,CATS[c],`${DB.art.filter(x=>x.cat==c).map(x=>`<div class="row sp"><span class="${x.aantal<=2?'warn':''}">${eb('inv',x.id)}${esc(x.naam)}${x.soort?` <button class="chip sm" onclick="flip('inv',${x.id})">${TT[x.soort]}</button>`:''}${x.vraag?`<div class="mute">${x.antwoorden.map((a,j)=>pbtn('inv',x.id,String(j),!!(x.antwoord_fotos||{})[a])+esc(a)).join(' ')}</div>`:''}</span>${stp(`qq(${x.id},`,x.aantal)}</div>`).join('')||'<span class="mute">Nog niets.</span>'}`,0)});
+ h+=fold('v-bel','Beleg in huis (sandwichen)',`${DB.bel.map(b=>`<div class="row sp"><span>${eb('bel',b.id)}${esc(b.naam)} <button class="chip sm" onclick="flip('bel',${b.id})">${TT[b.soort]}</button></span><button class="chip${b.aanwezig?' on':''}" onclick="bOn(${b.id})">${b.aanwezig?'Aanwezig':'Niet aanwezig'}</button></div>`).join('')}<div class="row"><input type="text" id="bn" placeholder="Nieuw beleg"><select id="bt" style="width:110px"><option value="h">Hartig</option><option value="z">Zoet</option></select><button class="btn" onclick="addBel()">+</button></div>`,0);
+ h+=fold('v-doz','Koekendozen',`${DB.doz.map(d=>`<div class="row sp"><span>${eb('doz',d.id)}${esc(d.naam)}</span>${stp(`dd(${d.id},`,d.aantal)}</div>`).join('')}<div class="row"><input type="text" id="dn" placeholder="Nieuwe doos"><button class="btn" onclick="addDoz()">+</button></div>`,0);
+ h+=fold('v-new','Nieuw artikel',`<select id="ic">${Object.keys(CATS).map(c=>`<option value="${c}">${CATS[c]}</option>`).join('')}</select><div class="row" style="margin:6px 0"><input type="text" id="in" placeholder="Naam"><select id="it" style="width:110px"><option value="h">Hartig</option><option value="z">Zoet</option></select></div><input type="text" id="iq" placeholder="Fruit: extra vraag (optioneel)" style="margin-bottom:6px"><input type="text" id="io" placeholder="Antwoorden, gescheiden door komma"><div style="margin-top:8px">${B('Toevoegen','addInv()')}</div><div class="mute" style="margin-top:6px">Hartig/zoet geldt enkel voor boterhammen.</div>`,0);
+ h+=fold('v-sym','Symbolen',`${DB.sym.map(s=>`<div class="row sp"><span>${eb('sym',s.id)}${si(s)} ${esc(s.naam)}</span></div>`).join('')||'<span class="mute">Nog geen symbolen. Voeg ze toe bij een dag.</span>'}`,0);
+ return h+fold('v-code','Code voor mammie en pappie',`<div class="row"><input type="text" id="np" inputmode="numeric" maxlength="4" placeholder="Nieuwe code (4 cijfers)"><button class="btn" onclick="setPin()">Opslaan</button></div>`,0)}
 function shop(){let h=head('Boodschappen')+`<div class="card"><h2>Op mijn lijstje zetten</h2><div class="row"><input type="text" id="ns" placeholder="Wat moet er gekocht worden?"><button class="btn" onclick="addShop()">+</button></div></div><div class="mute" style="margin-bottom:10px">Tik één keer: in het karretje. Tik nog eens na het afrekenen: weg van het lijstje.</div>`;
  FAM.forEach(f=>{const L=DB.shop.filter(x=>x.persoon==f.id);h+=`<div class="card"><div class="who" style="color:${f.c};margin-bottom:6px">${f.n}</div>${L.length?L.map(x=>`<button class="it${x.in_kar?' done':''}" onclick="tapShop(${x.id})"><span>${x.in_kar?'✅':'⬜'}</span>${esc(x.tekst)}</button>`).join(''):'<span class="mute">Niets op het lijstje.</span>'}</div>`});
  return h}
@@ -270,7 +281,7 @@ function wxCard(k){const p=wxPlace(k),w=wxGet(p);let b;
    b=`<div class="row" style="gap:14px"><span style="font-size:52px;line-height:1">${e}</span><div><div class="who">${t}</div><div>${Math.round(w.d.temperature_2m_min[i])}° tot ${Math.round(w.d.temperature_2m_max[i])}°</div><div class="mute">${r==null?'':r+'% kans op regen · '}wind tot ${Math.round(w.d.wind_speed_10m_max[i])} km/u</div></div></div>`}}
  let a='';
  if(adm())a=`<div style="margin-top:12px;border-top:2px solid var(--line);padding-top:10px"><div class="who">Weer van een andere plaats</div>${WP.filter(x=>x.tot>=todayK()).map(x=>`<div class="row sp"><span>${esc(x.naam)}: ${nlDate(x.van,{day:'numeric',month:'short'})} – ${nlDate(x.tot,{day:'numeric',month:'short'})}</span><button class="chip sm" onclick="delWP(${x.id})" aria-label="Verwijder">✕</button></div>`).join('')}<input type="text" id="wn" placeholder="Plaats (bv. De Panne)" style="margin:6px 0"><div class="row"><input type="date" id="wv" value="${k}" aria-label="Van"><input type="date" id="wt" value="${k}" aria-label="Tot"><button class="btn" onclick="addWP()">+</button></div></div>`;
- return `<div class="card"><h2>Weer · ${esc(p.naam)}</h2>${b}${a}</div>`}
+ return fold('d-weer','Weer · '+esc(p.naam),b+a,0)}
 /* ---------- tekenen + terugknop ---------- */
 let POP=0,LS='';
 addEventListener('popstate',e=>{let t=e.state||{scr:'home'};if(t.scr!='home'&&!S.who||t.scr=='pin')t={scr:'home'};S.scr=t.scr;S.day=t.day||S.day;S.edit=t.edit||0;S.step=t.step||0;S.pend=null;S.cf=null;S.ed=null;POP=1;draw();POP=0});
