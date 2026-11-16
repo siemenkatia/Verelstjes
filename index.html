@@ -77,7 +77,7 @@ const CFG=['type','hartig','zoet','fruit','dessert','snoep','koek','sap'];
 const TBL={inv:'artikelen',bel:'beleg',doz:'dozen',sym:'symbolen',ger:'gerechten'};
 const NONE={naam:'',antwoorden:[],antwoord_fotos:{},aantal:0};
 let DB={art:[],bel:[],doz:[],sym:[],ds:[],dagen:{},week:{},keuzes:[],taken:[],klaar:[],shop:[],ger:[],menu:[],beo:[]};
-const S={scr:'home',who:null,pin:'',code:'',m:new Date(),day:null,edit:0,step:0,pend:null,ed:null,cf:null,toast:null,err:null,loading:1,vak:0,op:{},q:'',ms:'best'};
+const S={scr:'home',who:null,pin:'',code:'',m:new Date(),day:null,edit:0,step:0,pend:null,ed:null,cf:null,toast:null,err:null,loading:1,vak:0,op:{},q:'',ms:'best',gq:'',dup:null};
 const P=id=>FAM.find(f=>f.id==id),adm=()=>!!S.who&&!P(S.who).kid;
 const A=id=>DB.art.find(x=>x.id==id)||NONE,BL=id=>DB.bel.find(x=>x.id==id)||NONE,DZ=id=>DB.doz.find(x=>x.id==id)||NONE;
 const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -172,7 +172,7 @@ async function edDel(){const e=S.ed;S.ed=null;await act(()=>del(TBL[e.kind],{id:
 async function setPin(){const p=gv('np');if(!/^\d{4}$/.test(p)){toast('De code moet uit 4 cijfers bestaan.');return}
  try{const r=await ok(sb.rpc('wijzig_code',{p_oud:S.code,p_nieuw:p}));if(r){S.code=p;toast('Code gewijzigd.')}else toast('Code niet gewijzigd.')}catch(e){toast('Er ging iets mis.')}}
 /* ---------- navigatie ---------- */
-function go(s){S.scr=s;S.edit=0;S.pend=null;S.cf=null;S.ed=null;draw()}
+function go(s){S.scr=s;S.dup=null;S.edit=0;S.pend=null;S.cf=null;S.ed=null;draw()}
 const pickWho=id=>{S.who=id;S.pin='';go(adm()?'pin':'cal')};
 const logout=()=>{S.who=null;S.code='';go('home')};
 async function num(d){if(d=='<')S.pin=S.pin.slice(0,-1);else S.pin+=d;
@@ -293,12 +293,21 @@ function gStats(id){const t=todayK(),ds=DB.menu.filter(m=>m.gerecht_id==id).map(
  return{n:R.length,avg:av(R),per:FAM.map(f=>{const r=R.filter(x=>x.persoon==f.id);return{f,n:r.length,avg:av(r)}}).filter(x=>x.n),last:past.length?past[past.length-1]:null,next:fut[0]||null,times:past.length}}
 const stars=v=>`<div class="stars" role="group" aria-label="Beoordeling">${[1,2,3,4,5].map(i=>`<button class="${i<=v?'on':''}" onclick="rate(${i})" aria-label="${i} ${i==1?'ster':'sterren'}">★</button>`).join('')}</div>`;
 const rate=n=>act(()=>ok(sb.from('beoordelingen').upsert({dag:S.day,persoon:S.who,sterren:n},{onConflict:'dag,persoon'})));
-function setMenu(){const n=gv('gn'),k=S.day;if(!n)return;
- act(async()=>{let g=DB.ger.find(x=>x.naam.toLowerCase()==n.toLowerCase());
-  if(!g){const r=await ok(sb.from('gerechten').insert({naam:n}).select());g=r[0]}
-  const m=DB.menu.find(x=>x.dag==k);
-  if(m&&m.gerecht_id!=g.id)await del('beoordelingen',{dag:k});
-  await ok(sb.from('menu').upsert({dag:k,gerecht_id:g.id},{onConflict:'dag'}))})}
+const nrm=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function lev(a,b){const m=a.length,n=b.length;let p=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]==b[j-1]?0:1));p=c}return p[n]}
+const close=(a,b)=>{const x=nrm(a),y=nrm(b);if(!x||!y)return false;if(x==y)return true;const m=Math.max(x.length,y.length);return lev(x,y)<=(m<=4?0:m<=8?1:2)};
+async function putMenu(k,gid){const m=DB.menu.find(x=>x.dag==k);if(m&&m.gerecht_id!=gid)await del('beoordelingen',{dag:k});await ok(sb.from('menu').upsert({dag:k,gerecht_id:gid},{onConflict:'dag'}))}
+function gClear(){S.gq='';S.dup=null;const e=document.getElementById('gn');if(e)e.value=''}
+function kiesG(id){const k=S.day;gClear();act(()=>putMenu(k,id))}
+function nieuwG(){const n=(S.gq||'').trim();if(!n)return;const near=DB.ger.filter(g=>close(g.naam,n));
+ if(near.length){S.dup={k:S.day,n,near:near.map(g=>g.id)};draw();return}
+ makeG(n)}
+function makeG(n){n=n||(S.dup&&S.dup.n);if(!n)return;n=n.charAt(0).toUpperCase()+n.slice(1);const k=S.day;gClear();
+ act(async()=>{const r=await ok(sb.from('gerechten').insert({naam:n}).select());await putMenu(k,r[0].id)})}
+function gHtml(){const q=(S.gq||'').trim(),nq=nrm(q),cur=(DB.menu.find(x=>x.dag==S.day)||{}).gerecht_id;
+ const L=DB.ger.filter(g=>!nq||nrm(g.naam).includes(nq)||close(g.naam,q)).sort((a,b)=>a.naam.localeCompare(b.naam,'nl',{sensitivity:'base'})),ex=nq&&DB.ger.some(g=>nrm(g.naam)==nq);
+ return `<div style="max-height:230px;overflow-y:auto;margin-top:6px">${L.map(g=>`<button class="it" onclick="kiesG(${g.id})">${g.id==cur?'✅':'🍽️'} ${esc(g.naam)}</button>`).join('')||'<div class="mute" style="padding:8px">Geen gerechten gevonden.</div>'}</div>`+(nq&&!ex?`<button class="it" style="margin-top:6px" onclick="nieuwG()">＋ Nieuw gerecht: ${esc(q)}</button>`:'')}
+function gList(){const e=document.getElementById('glist');if(e)e.innerHTML=gHtml()}
 function delMenu(){const k=S.day;if(DB.beo.some(x=>x.dag==k)&&!confirm('Het gerecht en de sterren van deze dag wissen?'))return;act(()=>del('menu',{dag:k}))}
 const dishPh=g=>`<div class="ph" style="width:84px;height:84px;font-size:40px;flex:none">${g.foto?`<img src="${esc(g.foto)}" alt="">`:ICON.gerecht}</div>`;
 function menuCard(k){const m=DB.menu.find(x=>x.dag==k),g=m&&DB.ger.find(x=>x.id==m.gerecht_id);
@@ -308,7 +317,9 @@ function menuCard(k){const m=DB.menu.find(x=>x.dag==k),g=m&&DB.ger.find(x=>x.id=
   if(k<=todayK()){const mine=DB.beo.find(x=>x.dag==k&&x.persoon==S.who);b+=`<div class="mute">Hoe vond jij het?</div>`+stars(mine?mine.sterren:0)}
   if(adm()&&k<=todayK()){const R=DB.beo.filter(x=>x.dag==k),s=gStats(g.id);
    b+=`<div style="margin-top:6px">${R.length?FAM.filter(f=>R.some(r=>r.persoon==f.id)).map(f=>`<span class="chip">${f.n} ${R.find(r=>r.persoon==f.id).sterren} ★</span>`).join(''):'<span class="mute">Nog niemand gaf sterren.</span>'}</div>`+(s.n?`<div class="who">Totaal van dit gerecht: ${fmt(s.avg)} ★ <span class="mute">(${s.n}×)</span></div>`:'')}}
- if(adm()){b+=`<div class="row" style="margin-top:10px"><input type="text" id="gn" list="gl" placeholder="${g?'Ander gerecht kiezen of typen':'Gerecht (bv. Spaghetti)'}"><datalist id="gl">${DB.ger.map(x=>`<option value="${esc(x.naam)}">`).join('')}</datalist><button class="btn" onclick="setMenu()">${g?'Wijzig':'Opslaan'}</button></div>`;
+ if(adm()){const pick=`<input type="text" id="gn" placeholder="Zoek of typ een gerecht…" value="${esc(S.gq||'')}" oninput="S.gq=this.value;gList()" autocomplete="off" style="margin-top:6px"><div id="glist">${gHtml()}</div>`;
+  b+=g?`<details style="margin-top:10px"${S.op['d-pick']?' open':''} ontoggle="S.op['d-pick']=this.open"><summary style="cursor:pointer;font-weight:700">Ander gerecht kiezen</summary>${pick}</details>`:`<div style="margin-top:10px"><div class="who">Gerecht kiezen</div>${pick}</div>`;
+  if(S.dup&&S.dup.k==k)b+=`<div class="card" style="border-color:var(--acc);margin:10px 0 0">Lijkt op een bestaand gerecht. Bedoel je:<div style="margin-top:6px">${S.dup.near.map(id=>DB.ger.find(x=>x.id==id)).filter(Boolean).map(x=>`<button class="it" onclick="kiesG(${x.id})">🍽️ ${esc(x.naam)}</button>`).join('')}<button class="it" onclick="makeG()">Nee, nieuw gerecht: ${esc(S.dup.n)}</button></div></div>`;
   if(g)b+=`<div style="margin-top:8px">${pbtn('ger',g.id,'',!!g.foto)}<span class="mute">foto van het gerecht</span> ${B('Wissen van deze dag','delMenu()','ghost sm')}</div>`}
  return fold('d-menu',t,b,1)}
 function menu(){let h=head('Menu')+(S.ed?editCard():'');
